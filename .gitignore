@@ -1,0 +1,23 @@
+node_modules/
+dist/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+!.env.docker.example
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.jks
+*.keystore
+key.properties
+local.properties
+.idea/
+.vscode/
+.DS_Store
+# real grade or student files must never be committed
+*.xlsx
+*.xls
+*.csv
