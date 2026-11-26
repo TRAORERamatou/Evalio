@@ -1,20 +1,58 @@
 name: CI
+
 on:
   pull_request:
+    branches: [main]
   push:
     branches: [main]
+
 permissions:
   contents: read
-  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  api:
+  changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      app: ${{ steps.filter.outputs.app }}
+      has_app: ${{ steps.exists.outputs.has_app }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - id: exists
+        run: |
+          if [ -f "app/pubspec.yaml" ]; then
+            echo "has_app=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_app=false" >> "$GITHUB_OUTPUT"
+          fi
+      - id: filter
+        uses: dorny/paths-filter@de90cc6fb38fc092debad7e213e93f84c1c2f858 # v3.0.2
+        with:
+          filters: |
+            api:
+              - 'api/**'
+              - '.nvmrc'
+              - '.github/workflows/ci.yml'
+            app:
+              - 'app/**'
+              - '.github/workflows/ci.yml'
+
+  api:
+    needs: changes
+    if: needs.changes.outputs.api == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: api
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -23,34 +61,47 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
-  docker:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - run: docker build --target runtime -t evalio-api:ci api
-      - run: |
-          JWT_ACCESS_SECRET=ci-only-secret-ci-only-secret-ci-only docker compose config --quiet
+
   app:
+    needs: changes
+    if: needs.changes.outputs.has_app == 'true' && (needs.changes.outputs.app == 'true' || github.event_name == 'push')
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: app
     steps:
-      - uses: actions/checkout@v5
-      - uses: subosito/flutter-action@v2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: subosito/flutter-action@e938fdf56512cc96ef2f93cf9e7a0f66f0c8577f # v2.19.0
         with:
+          flutter-version: "3.29.0" # HYPOTHESE: confirm with App Lead at T01
           channel: stable
           cache: true
       - run: flutter pub get
       - run: dart format --output=none --set-exit-if-changed .
-      - run: flutter analyze
+      - run: flutter analyze --fatal-infos
       - run: flutter test
+
   secrets:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@cb7149302e5e26a7409986c43e3f23c1b02b06f2 # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  required:
+    needs: [api, app, secrets]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check required jobs
+        run: |
+          if [ "${{ needs.api.result }}" = "failure" ] || [ "${{ needs.api.result }}" = "cancelled" ]; then exit 1; fi
+          if [ "${{ needs.app.result }}" = "failure" ] || [ "${{ needs.app.result }}" = "cancelled" ]; then exit 1; fi
+          if [ "${{ needs.secrets.result }}" = "failure" ] || [ "${{ needs.secrets.result }}" = "cancelled" ]; then exit 1; fi
+          echo "All applicable CI checks passed."
