@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'features/focus/presentation/focus_test_screen.dart';
 
 class EvalioApp extends StatelessWidget {
