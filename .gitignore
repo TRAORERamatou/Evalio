@@ -1,23 +1,42 @@
+# Dependencies & build
 node_modules/
 dist/
 coverage/
 *.log
+
+# Environment & secrets
 .env
 .env.*
 !.env.example
 !.env.docker.example
-.dart_tool/
-build/
-.flutter-plugins
-.flutter-plugins-dependencies
+*.pem
+*.p12
 *.jks
 *.keystore
 key.properties
 local.properties
+google-services.json
+GoogleService-Info.plist
+
+# Flutter / Dart / Android
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+android/.gradle/
+android/captures/
+*.apk
+*.aab
+
+# IDEs & OS
 .idea/
 .vscode/
+*.iml
 .DS_Store
-# real grade or student files must never be committed
+Thumbs.db
+
+# Real grade or student files must never be committed
 *.xlsx
 *.xls
 *.csv
