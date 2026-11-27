@@ -1,0 +1,15 @@
+title = "Evalio gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow documented example and CI placeholder secrets"
+paths = [
+  '''^\.env\.docker\.example$''',
+  '''^api/\.env\.example$''',
+  '''^docs/''',
+]
+regexes = [
+  '''ci-only-secret-ci-only-secret-ci-only''',
+]
