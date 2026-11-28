@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
-import '../../../core/di/get_it.dart';
 import '../domain/focus_event.dart';
 import '../domain/focus_monitor.dart';
 
@@ -33,13 +32,16 @@ class FocusGuardBlurred extends FocusGuardState {
 /// Cubit de surveillance du focus pour l'écran d'essai (spike T04).
 ///
 /// Écoute le FocusMonitor et compte les pertes de focus.
+///
+/// [monitor] est injecté via le constructeur pour faciliter les tests
+/// (mocktail). Lorsqu'il est fermé, l'abonnement au flux de focus est annulé.
 class FocusGuardCubit extends Cubit<FocusGuardState> {
-  final FocusMonitor _monitor = getIt<FocusMonitor>();
+  final FocusMonitor _monitor;
   StreamSubscription? _subscription;
 
   int _exitCount = 0;
 
-  FocusGuardCubit() : super(FocusGuardInitial());
+  FocusGuardCubit(this._monitor) : super(FocusGuardInitial());
 
   /// Démarre la surveillance du focus.
   Future<void> start() async {
@@ -60,10 +62,15 @@ class FocusGuardCubit extends Cubit<FocusGuardState> {
     });
   }
 
-  /// Arrête la surveillance.
+  /// Arrête la surveillance et annule l'abonnement au flux de focus.
   Future<void> stop() async {
     await _subscription?.cancel();
     _subscription = null;
+  }
+
+  @override
+  Future<void> close() {
+    return stop().then((_) => super.close());
   }
 
   int get exitCount => _exitCount;

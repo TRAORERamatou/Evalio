@@ -56,55 +56,7 @@ class DioClient {
 
         // Intercepteur de réponse d'erreur : mappe vers des Failure typées.
         onError: (DioException error, handler) async {
-          final response = error.response;
-          final statusCode = response?.statusCode;
-          final dynamic data = response?.data;
-
-          String message;
-          if (data is Map && data.containsKey('message')) {
-            message =
-                data['message']?.toString() ??
-                error.message ??
-                'Erreur inconnue';
-          } else {
-            message = error.message ?? 'Erreur inconnue';
-          }
-
-          Failure failure;
-          switch (statusCode) {
-            case 401:
-              failure = UnauthorizedFailure(message: message, statusCode: 401);
-              break;
-            case 403:
-              failure = UnauthorizedFailure(message: message, statusCode: 403);
-              break;
-            case 404:
-              failure = NotFoundFailure(message: message, statusCode: 404);
-              break;
-            case 422:
-              final Map<String, List<String>> fieldErrors = {};
-              if (data is Map && data.containsKey('errors')) {
-                final errors = data['errors'];
-                if (errors is Map) {
-                  errors.forEach((key, value) {
-                    if (value is List) {
-                      fieldErrors[key.toString()] = List<String>.from(
-                        value.cast<dynamic>(),
-                      );
-                    }
-                  });
-                }
-              }
-              failure = ValidationFailure(
-                message: message,
-                fieldErrors: fieldErrors.isNotEmpty ? fieldErrors : null,
-                statusCode: 422,
-              );
-              break;
-            default:
-              failure = ServerFailure(message: message, statusCode: statusCode);
-          }
-
+          final failure = DioClient.mapError(error);
           return handler.reject(
             DioException(
               requestOptions: error.requestOptions,
@@ -118,6 +70,84 @@ class DioClient {
     );
 
     return _dio!;
+  }
+
+  /// Mappe une [DioException] vers une [Failure] typée selon le contrat API
+  /// (docs/06-api-contract.md §1).
+  ///
+  /// Erreurs réseau / timeouts → [NetworkFailure].
+  /// 401/403 → [UnauthorizedFailure], 404 → [NotFoundFailure],
+  /// 422 → [ValidationFailure] avec détails par champ,
+  /// autre → [ServerFailure].
+  static Failure mapError(DioException error) {
+    final response = error.response;
+    final statusCode = response?.statusCode;
+    final dynamic data = response?.data;
+
+    String message;
+    Map<String, List<String>>? fieldErrors;
+
+    if (data is Map && data.containsKey('error')) {
+      final errorObj = data['error'];
+      if (errorObj is Map) {
+        message =
+            errorObj['message']?.toString() ??
+            error.message ??
+            'Erreur inconnue';
+        final rawDetails = errorObj['details'];
+        if (rawDetails is List) {
+          fieldErrors = {};
+          for (final detail in rawDetails) {
+            if (detail is Map) {
+              final field = detail['field']?.toString();
+              final msg = detail['message']?.toString();
+              if (field != null && msg != null) {
+                fieldErrors.putIfAbsent(field, () => []).add(msg);
+              }
+            }
+          }
+        }
+      } else {
+        message = error.message ?? 'Erreur inconnue';
+      }
+    } else {
+      message = error.message ?? 'Erreur inconnue';
+    }
+
+    // Erreurs réseau / timeouts → NetworkFailure avant tout code HTTP.
+    final isNetworkError =
+        error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.sendTimeout ||
+        error.type == DioExceptionType.receiveTimeout ||
+        error.type == DioExceptionType.unknown;
+
+    Failure failure;
+    if (isNetworkError) {
+      failure = NetworkFailure(message: message);
+    } else {
+      switch (statusCode) {
+        case 401:
+          failure = UnauthorizedFailure(message: message, statusCode: 401);
+          break;
+        case 403:
+          failure = UnauthorizedFailure(message: message, statusCode: 403);
+          break;
+        case 404:
+          failure = NotFoundFailure(message: message, statusCode: 404);
+          break;
+        case 422:
+          failure = ValidationFailure(
+            message: message,
+            fieldErrors: fieldErrors,
+            statusCode: 422,
+          );
+          break;
+        default:
+          failure = ServerFailure(message: message, statusCode: statusCode);
+      }
+    }
+
+    return failure;
   }
 
   static void dispose() {

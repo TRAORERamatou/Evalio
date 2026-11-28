@@ -1,5 +1,7 @@
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/di/get_it.dart';
+import '../domain/focus_monitor.dart';
 import 'focus_guard_cubit.dart';
 
 /// Écran de test du spike T04 : détection de focus et FLAG_SECURE.
@@ -11,7 +13,7 @@ class FocusTestScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => FocusGuardCubit()..start(),
+      create: (_) => FocusGuardCubit(getIt<FocusMonitor>())..start(),
       child: const _FocusTestView(),
     );
   }
