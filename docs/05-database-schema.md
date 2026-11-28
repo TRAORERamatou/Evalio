@@ -9,7 +9,8 @@ Every document has `_id`, `createdAt`, `updatedAt`. `Ref` is an ObjectId. Grades
 |---|---|---|
 | email | String | required, lowercase, unique |
 | passwordHash | String | Argon2id, never returned |
-| lastName, firstNames | String | required |
+| firstName | String | required |
+| lastName | String | required |
 | role | `student` \| `teacher` \| `admin` \| `super_admin` | server-set; `super_admin` has no `schoolId` |
 | studentId | String? | e.g. school matricule |
 | schoolId | Ref? | |
