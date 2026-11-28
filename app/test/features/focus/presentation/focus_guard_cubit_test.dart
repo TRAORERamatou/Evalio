@@ -20,12 +20,12 @@ void main() {
       when(() => mockMonitor.isSecure()).thenAnswer((_) async => true);
       when(() => mockMonitor.onFocusChanged()).thenAnswer(
         (_) =>
-            Stream.fromIterable([FocusEvent(hasFocus: false, timestampMs: 1)]),
+            Stream.fromIterable([const FocusEvent(hasFocus: false, timestampMs: 1)]),
       );
       return FocusGuardCubit(mockMonitor);
     },
     act: (cubit) => cubit.start(),
-    expect: () => [FocusGuardBlurred(1)],
+    expect: () => const [FocusGuardBlurred(1)],
     verify: (_) {
       verify(() => mockMonitor.isSecure()).called(1);
       verify(() => mockMonitor.onFocusChanged()).called(1);
@@ -38,14 +38,14 @@ void main() {
       when(() => mockMonitor.isSecure()).thenAnswer((_) async => true);
       when(() => mockMonitor.onFocusChanged()).thenAnswer(
         (_) => Stream.fromIterable([
-          FocusEvent(hasFocus: false, timestampMs: 1),
-          FocusEvent(hasFocus: true, timestampMs: 2),
+          const FocusEvent(hasFocus: false, timestampMs: 1),
+          const FocusEvent(hasFocus: true, timestampMs: 2),
         ]),
       );
       return FocusGuardCubit(mockMonitor);
     },
     act: (cubit) => cubit.start(),
-    expect: () => [FocusGuardBlurred(1), FocusGuardFocused()],
+    expect: () => const [FocusGuardBlurred(1), FocusGuardFocused()],
   );
 
   blocTest<FocusGuardCubit, FocusGuardState>(

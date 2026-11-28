@@ -17,7 +17,8 @@ abstract class FocusGuardState extends Equatable {
 class FocusGuardInitial extends FocusGuardState {}
 
 /// L'application a le focus (au premier plan).
-class FocusGuardFocused extends FocusGuardState {}
+class FocusGuardFocused extends FocusGuardState {
+  const FocusGuardFocused();
 
 /// L'application a perdu le focus. [exitCount] est le nombre de sorties comptées.
 class FocusGuardBlurred extends FocusGuardState {
