@@ -90,8 +90,7 @@ class DioClient {
     if (data is Map && data.containsKey('error')) {
       final errorObj = data['error'];
       if (errorObj is Map) {
-        message =
-            errorObj['message']?.toString() ??
+        message = errorObj['message']?.toString() ??
             error.message ??
             'Erreur inconnue';
         final rawDetails = errorObj['details'];
@@ -115,8 +114,7 @@ class DioClient {
     }
 
     // Erreurs réseau / timeouts → NetworkFailure avant tout code HTTP.
-    final isNetworkError =
-        error.type == DioExceptionType.connectionTimeout ||
+    final isNetworkError = error.type == DioExceptionType.connectionTimeout ||
         error.type == DioExceptionType.sendTimeout ||
         error.type == DioExceptionType.receiveTimeout ||
         error.type == DioExceptionType.unknown;

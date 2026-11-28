@@ -9,8 +9,7 @@ class AppRouter {
     return GoRouter(
       initialLocation: '/login',
       redirect: (context, state) {
-        final loggingIn =
-            state.matchedLocation == '/login' ||
+        final loggingIn = state.matchedLocation == '/login' ||
             state.matchedLocation == '/register';
         if (!isAuthenticated() && !loggingIn) return '/login';
         if (isAuthenticated() && loggingIn) return '/courses';
