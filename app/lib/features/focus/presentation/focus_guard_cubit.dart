@@ -56,6 +56,7 @@ class FocusGuardCubit extends Cubit<FocusGuardState> {
 
     _subscription = _monitor.onFocusChanged().listen((FocusEvent event) {
       if (event.hasFocus) {
+        // ignore: prefer_const_constructors
         emit(FocusGuardFocused());
       } else {
         _exitCount++;
