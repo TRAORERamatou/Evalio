@@ -19,8 +19,8 @@ void main() {
     build: () {
       when(() => mockMonitor.isSecure()).thenAnswer((_) async => true);
       when(() => mockMonitor.onFocusChanged()).thenAnswer(
-        (_) =>
-            Stream.fromIterable([const FocusEvent(hasFocus: false, timestampMs: 1)]),
+        (_) => Stream.fromIterable(
+            [const FocusEvent(hasFocus: false, timestampMs: 1)]),
       );
       return FocusGuardCubit(mockMonitor);
     },
