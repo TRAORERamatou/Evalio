@@ -2,9 +2,12 @@ name: CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, dev]
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled, ready_for_review]
   push:
-    branches: [main]
+    branches: [main, dev]
+    tags:
+      - 'v*.*.*'
 
 permissions:
   contents: read
@@ -93,8 +96,28 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  tests-present:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4 # pinned major version
+        with:
+          fetch-depth: 0
+      - name: Check that code changes include tests
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          HAS_EXEMPT_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'no-tests-needed') }}
+        run: |
+          git fetch origin "${BASE_REF}" --depth=1
+          bash .github/scripts/tests-present.sh
+
   required:
-    needs: [api, app, secrets]
+    needs: [api, app, secrets, tests-present]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 2
@@ -104,4 +127,25 @@ jobs:
           if [ "${{ needs.api.result }}" = "failure" ] || [ "${{ needs.api.result }}" = "cancelled" ]; then exit 1; fi
           if [ "${{ needs.app.result }}" = "failure" ] || [ "${{ needs.app.result }}" = "cancelled" ]; then exit 1; fi
           if [ "${{ needs.secrets.result }}" = "failure" ] || [ "${{ needs.secrets.result }}" = "cancelled" ]; then exit 1; fi
+          if [ "${{ needs.tests-present.result }}" = "failure" ] || [ "${{ needs.tests-present.result }}" = "cancelled" ]; then exit 1; fi
           echo "All applicable CI checks passed."
+
+  release:
+    needs: [api, app, secrets]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4 # pinned major version
+        with:
+          fetch-depth: 0
+      - name: Ensure release tag points to a commit on main
+        run: |
+          git fetch origin main:refs/remotes/origin/main
+          if ! git branch -r --contains "$GITHUB_SHA" | grep -q 'origin/main'; then
+            echo "::error::Release tag must point to a commit on main."
+            exit 1
+          fi
+          echo "Release tag verified on main (APK signing/upload wired at M4)."
